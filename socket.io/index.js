@@ -1,13 +1,13 @@
 import { GenRndChars } from '../include/functions.js';
 import { log, err, debug } from '../include/console.js';
 import { StartGame } from '../include/Rcon.js';
-import { client } from '../discord/_main.js';
-import { data, lobby } from '../include/db.js';
+import { client } from '../discord/index.js';
+import { data, lobby, db } from '../include/db.js';
 import { Server } from 'socket.io';
-import { app } from '../express/_main.js';
+import { app } from '../express/index.js';
 import { readFileSync } from "fs";
 import { createServer } from "https";
-import { EmbedEdit } from '../discord/functions.js';
+import { EmbedEdit, getPlayerGames } from '../discord/functions.js';
 
 export const status = {
     0: {
@@ -69,14 +69,6 @@ io.on('connection', (socket) => {
         if(lobby[socket_pug].players.filter(s => s.socket == player.socket || s.steam == player.steam).length > 0) return;
         debug(`Player ${socket.user.name} joined to lobby: ${socket_pug} (socket: ${socket.id})`);
 
-        
-        io.to(`lobby:${socket_pug}`).emit('message-new', {
-            text: 'הצטרף',
-            steam: player.steam,
-            name: player.name,
-            avatar: player.avatar
-        });
-
         lobby[socket_pug].players.push(player);
         lobby[socket_pug].players.filter(s =>
             s.socket == player.socket
@@ -87,7 +79,9 @@ io.on('connection', (socket) => {
 
         player.discord = discord;
 
-        await io.to(`lobby:${socket_pug}`).emit('player-join', player );
+        player.games = await getPlayerGames(player.steam);
+
+        io.to(`lobby:${socket_pug}`).emit('player-join', player );
     });
 
     socket.on('player-leave', () => {
@@ -97,11 +91,9 @@ io.on('connection', (socket) => {
         if(!lobby[socket_pug].players.filter(s => s.socket != socket.id)) return;
         lobby[socket_pug].players = lobby[socket_pug].players.filter(s => s.socket != socket.id);
         io.to(`lobby:${socket_pug}`).emit('players-refresh', lobby[socket_pug].players);
-        io.to(`lobby:${socket_pug}`).emit('message-new', {
-            text: 'עזב',
-            steam: socket.user.steam,
+        io.to(`lobby:${socket_pug}`).emit('player-left', {
             name: socket.user.name,
-            avatar: socket.user.avatar
+            steam: socket.user.steam,
         });
     });
 
@@ -116,6 +108,17 @@ io.on('connection', (socket) => {
             port: lobby[pug].server.port,
         };
         StartGame(lobby[pug], PugInfo.password);
+        // save mysql info
+        let players = '';
+        lobby[pug].players.forEach(player => {
+            players += `${player.steam}::`
+        });
+        db.query(
+            'INSERT INTO `Pug_Games` (`LID`, `Players`) VALUES (?, ?)', [parseInt(pug), players], (err, results) => {
+                if(err) return console.log(err);
+            }
+        );
+
         io.to(`lobby:${pug}`).emit('pug-start', PugInfo);
         lobby[pug].status = 1;
         EmbedEdit(lobby[socket_pug]);

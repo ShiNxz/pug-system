@@ -1,15 +1,16 @@
 import { client } from './index.js';
 import { MessageEmbed, MessageActionRow, MessageButton } from 'discord.js';
 import { err as _err } from '../include/console.js';
+import { db } from '../include/db.js';
 
-export function EmbedEdit(lobby) {
+/**
+  * @param {int} [lobby] - lobby id
+  */
+export const EmbedEdit = (lobby) => {
     client.channels.cache.get(lobby.discord.channel).messages.fetch({ limit: 1 }).then(messages => {
         let players = '';
 
         if(lobby.players.length > 0) {
-            //for(let i = 0; i < lobby.players.length; i++) {
-            //    players += `**➜ [${lobby.players[i].name}](https://steamcommunity.com/profiles/${lobby.players[i].steam}) | <@${lobby.players[i].discord.user.id}>:** ${lobby.players[i].status.emoji} ${lobby.players[i].status.name}\n`
-            //}
             lobby.players.forEach(player => {
                 players += `**➜ [${player.name}](https://steamcommunity.com/profiles/${player.steam}) | <@${player.discord.user.id}>:** ${player.status.emoji} ${player.status.name}\n`
             })
@@ -48,5 +49,23 @@ export function EmbedEdit(lobby) {
         });
     }).catch(err => {
         _err(`error while updating embed ${lobby.id}`, err);
+    });
+}
+
+/**
+  * @param {string} [player] - steam player id
+  */
+export const getPlayerGames = (player) => {
+    return new Promise((resolve, reject) => {
+        player = `%${player}%`;
+        db.query(
+            'SELECT COUNT(*) AS count FROM `Pug_Games` WHERE `Players` LIKE ?', [player], (err, results) => {
+                if(err) {
+                    _err('mysql:', err);
+                    return reject(err);
+                }
+                resolve(results[0].count);
+            }
+        );
     });
 }

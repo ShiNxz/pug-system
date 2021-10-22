@@ -1,35 +1,34 @@
 import Rcon from 'mbr-rcon';
 import { debug, err } from './console.js';
 
-
-export function StartGame(lobby, password) {
+export const StartGame = (lobby, password) => {
   // create the connection
   const rcon = new Rcon({
     host: lobby.server.ip,
     port: lobby.server.port,
     pass: lobby.server.rcon,
-    onClose: function () { }
+    onClose: () => { }
   });
   // connect
   let connection = rcon.connect({
-    onSuccess: function () {
+    onSuccess: () => {
       debug(`Rcon Connected to Lobby ${lobby}`);
     },
-    onError: function (error) {
+    onError: (error) => {
       err(`Rcon Couldnt connect to Lobby ${lobby} Rcon`, error);
     }
   });
   connection.auth({
-    onSuccess: function () { },
-    onError: function (error) { }
+    onSuccess: () => { },
+    onError: (error) => { }
   });
   // send the reset command
   connection.send(`bot_kick`,
     {
-      onSuccess: function (response) {
+      onSuccess: (response) => {
         debug(`Rcon Sent start command to lobby ${lobby} with password ${password}`);
       },
-      onError: function (error) {
+      onError: (error) => {
         err(`Rcon Couldnt send reset command to lobby ${lobby}`, error);
       }
     });

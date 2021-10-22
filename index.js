@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { server } from './socket.io/_main.js'
+import { server } from './socket.io/index.js'
 import dotenv from 'dotenv';
 dotenv.config();
 
